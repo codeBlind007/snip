@@ -1,0 +1,30 @@
+[project]
+name = "backend"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "kartik", email = "raghu1ckartik.rk@gmail.com" }
+]
+requires-python = ">=3.13"
+dependencies = [
+    "alembic>=1.20.0",
+    "fastapi[standard]>=0.156.8",
+    "httpx>=0.28.1",
+    "psycopg2>=2.9.13",
+    "psycopg[binary]>=3.3.6",
+    "pydantic-settings>=2.16.1",
+    "pyjwt[crypto]>=2.15.1",
+    "pytest>=9.1.1",
+    "python-dotenv>=1.2.4",
+    "python-multipart>=0.0.32",
+    "redis>=8.1.0",
+    "sqlalchemy>=2.1.5",
+]
+
+[project.scripts]
+backend = "backend:main"
+
+[build-system]
+requires = ["uv_build>=0.13.4,<0.14.0"]
+build-backend = "uv_build"
