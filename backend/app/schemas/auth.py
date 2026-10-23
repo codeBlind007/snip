@@ -15,6 +15,14 @@ class UserResponse(BaseModel):
         "from_attributes": True,
     }
         
+class LoginResponse(BaseModel):
+    user: UserResponse
 
 class SignupResponse(BaseModel):
     user: UserResponse
+    
+    
+class LoginRequest(BaseModel):
+    email_id: EmailStr
+    password: str = Field(min_length=8, max_length=128)
+    

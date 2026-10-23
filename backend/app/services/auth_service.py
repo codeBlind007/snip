@@ -1,9 +1,9 @@
 import os
 import jwt
-
+from fastapi import HTTPException
 from sqlalchemy.orm import Session
 from app.models.user import User
-from app.schemas.auth import SignupRequest
+from app.schemas.auth import SignupRequest, LoginRequest
 from datetime import datetime, timedelta, timezone
 from pwdlib import PasswordHash
 from dotenv import load_dotenv
@@ -56,3 +56,16 @@ def signup_user(db: Session, data: SignupRequest) -> User:
     db.refresh(user)
     
     return user
+
+
+def login_user(db: Session, data: LoginRequest):
+    user = (
+        db.query(User).filter(User.email_id == str(data.email_id)).first()
+    )
+    
+    if user is None or not password_hash.verify(data.password, user.password):
+        raise HTTPException(status_code=401, detail="Invalid email or password")
+    
+    return user
+    
+    
