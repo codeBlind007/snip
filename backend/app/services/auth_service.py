@@ -67,5 +67,7 @@ def login_user(db: Session, data: LoginRequest):
         raise HTTPException(status_code=401, detail="Invalid email or password")
     
     return user
-    
+
+
+
     

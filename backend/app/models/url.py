@@ -14,7 +14,7 @@ from app.db.db import Base
 from app.models.user import User
 
 
-class URL(Base):
+class Url(Base):
     __tablename__ = "urls"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)

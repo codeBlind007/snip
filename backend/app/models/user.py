@@ -10,7 +10,7 @@ class User(Base):
     password: Mapped[str] = mapped_column(String(100), nullable=False)
     fullname: Mapped[str] = mapped_column(String(100), nullable=False)
     
-    urls: Mapped[list["URL"]] = relationship(
+    urls: Mapped[list["Url"]] = relationship(
         back_populates="owner",
         cascade="all, delete-orphan",
     )
