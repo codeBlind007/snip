@@ -3,6 +3,8 @@ import os
 from dotenv import load_dotenv
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy.orm import sessionmaker
+
 
 
 load_dotenv()
@@ -22,6 +24,7 @@ DATABASE_URL = (
 
 engine = create_engine(DATABASE_URL)
 
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 def check_database_connection():
     try:
@@ -31,3 +34,12 @@ def check_database_connection():
     except Exception as e:
         print(f"Database connection failed: {e}")
         raise
+
+
+
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
