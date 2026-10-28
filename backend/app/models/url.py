@@ -7,6 +7,7 @@ from sqlalchemy import (
     Integer,
     String,
     func,
+    UniqueConstraint
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -18,8 +19,10 @@ class Url(Base):
     __tablename__ = "urls"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    
+    idempotency_key: Mapped[str] = mapped_column(String(36),nullable=False)   
 
-    short_url: Mapped[str] = mapped_column(
+    short_code: Mapped[str] = mapped_column(
         String(30), unique=True, index=True, nullable=False
     )
 
@@ -49,6 +52,14 @@ class Url(Base):
         index=True,
     )
 
+    __table_args__ = (
+        UniqueConstraint(
+            "user_id",
+            "idempotency_key",
+            name="uq_urls_user_idempotency_key",
+        ),
+    )
+    
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),

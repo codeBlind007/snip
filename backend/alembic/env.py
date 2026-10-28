@@ -4,7 +4,7 @@ from alembic import context
 
 from app.db.db import Base, engine
 from app.models.user import User
-from app.models.url import URL
+from app.models.url import Url
 
 config = context.config
 

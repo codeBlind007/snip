@@ -31,7 +31,7 @@ class UrlCreateRequest(BaseModel):
 
 class UrlResponse(BaseModel):
     id: int
-    short_url: str
+    short_url: HttpUrl
     long_url: HttpUrl
     max_clicks: int | None
     click_count: int
