@@ -4,7 +4,7 @@ from fastapi import HTTPException
 from sqlalchemy import func, or_, update
 
 from app.models.url import Url
-from app.schemas.url import UrlCreateRequest, UrlListResponse, UrlResponse
+from app.schemas.url import UrlCreateRequest, UrlListResponse, UrlResponse, UrlUpdateRequest
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
@@ -224,6 +224,63 @@ def get_urls_service(
         page=page,
         limit=LIMIT,
         total_pages=ceil(total / LIMIT),
+    )
+    
+    
+def update_url_config_service(
+    data: UrlUpdateRequest,
+    url_id: int,
+    user_id: int,
+    db: Session,
+):
+    url = (
+        db.query(Url)
+        .filter(
+            Url.user_id == user_id,
+            Url.id == url_id,
+        )
+        .first()
+    )
+
+    if url is None:
+        raise HTTPException(
+            status_code=404,
+            detail="No URL found with this id",
+        )
+
+    update_data = data.model_dump(exclude_unset=True)
+
+    if not update_data:
+        raise HTTPException(
+            status_code=400,
+            detail="No fields provided for update",
+        )
+
+    # Apply updates
+    for key, value in update_data.items():
+        setattr(url, key, value)
+
+    try:
+        db.commit()
+        db.refresh(url)
+
+    except SQLAlchemyError:
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to update URL configuration",
+        )
+
+    return UrlResponse(
+        id=url.id,
+        short_url=f"https://snip.ly/{url.short_code}",
+        long_url=url.long_url,
+        max_clicks=url.max_clicks,
+        click_count=url.click_count,
+        expire_time=url.expire_time,
+        is_active=url.is_active,
+        user_id=url.user_id,
+        created_at=url.created_at,
     )
     
     

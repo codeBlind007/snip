@@ -2,10 +2,10 @@ from fastapi import APIRouter, HTTPException, Query, Response, Depends, status, 
 from fastapi.responses import RedirectResponse
 from app.models.url import Url
 from app.models.user import User
-from app.schemas.url import UrlCreateRequest, UrlListResponse, UrlResponse 
+from app.schemas.url import UrlCreateRequest, UrlListResponse, UrlResponse, UrlUpdateRequest 
 from app.db.db import get_db
 from sqlalchemy.orm import Session
-from app.services.url_service import get_urls_service, short_url_service, redirect_service
+from app.services.url_service import get_urls_service, short_url_service, redirect_service, update_url_config_service
 from app.dependencies.auth import get_current_user
 
 import os
@@ -14,8 +14,6 @@ is_development = os.getenv("env") == 'development'
 prefix_url = "http://127.0.0.1:8000/url" if is_development else os.getenv("prefix_url")
 
 router = APIRouter(prefix="/url", tags=["URL"])
-
-
 
 @router.post(
     "",
@@ -55,7 +53,7 @@ def redirect_url(short_code: str, db: Session = Depends(get_db)) :
     )
     
     
-@router.get("", response_model=UrlListResponse)
+@router.get("", response_model=UrlListResponse, status_code=status.HTTP_200_OK)
 def get_urls(
     is_active: bool | None = None,
     alias: str | None = None,
@@ -72,3 +70,16 @@ def get_urls(
     )
     
     
+@router.patch("/{url_id}", response_model=UrlResponse)
+def update_url_config(
+    url_id: int,
+    data: UrlUpdateRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    return update_url_config_service(
+        data=data,
+        url_id=url_id,
+        user_id=current_user.id,
+        db=db,
+    )

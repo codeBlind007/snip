@@ -49,3 +49,10 @@ class UrlListResponse(BaseModel):
     page: int
     limit: int
     total_pages: int
+    
+class UrlUpdateRequest(BaseModel):
+    max_clicks: int | None = Field(default=None, ge = 1)
+    expire_time: datetime | None = None
+    is_active: bool | None = None
+    
+    
