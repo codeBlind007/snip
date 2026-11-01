@@ -41,3 +41,11 @@ class UrlResponse(BaseModel):
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+    
+    
+class UrlListResponse(BaseModel):
+    urls: list[UrlResponse]
+    total: int
+    page: int
+    limit: int
+    total_pages: int

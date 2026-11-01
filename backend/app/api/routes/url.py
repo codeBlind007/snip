@@ -1,12 +1,21 @@
-from fastapi import APIRouter, HTTPException, Response, Depends, status, Header
+from fastapi import APIRouter, HTTPException, Query, Response, Depends, status, Header
+from fastapi.responses import RedirectResponse
 from app.models.url import Url
 from app.models.user import User
-from app.schemas.url import UrlCreateRequest, UrlResponse 
+from app.schemas.url import UrlCreateRequest, UrlListResponse, UrlResponse 
 from app.db.db import get_db
 from sqlalchemy.orm import Session
-from app.services.url_service import short_url_service
+from app.services.url_service import get_urls_service, short_url_service, redirect_service
 from app.dependencies.auth import get_current_user
+
+import os
+
+is_development = os.getenv("env") == 'development'
+prefix_url = "http://127.0.0.1:8000/url" if is_development else os.getenv("prefix_url")
+
 router = APIRouter(prefix="/url", tags=["URL"])
+
+
 
 @router.post(
     "",
@@ -23,7 +32,7 @@ def gen_short_url(
     response = UrlResponse.model_validate(
         {
             "id": url.id,
-            "short_url": f"https://snip.ly/{url.short_code}",
+            "short_url": f"{prefix_url}/{url.short_code}",
             "long_url": url.long_url,
             "max_clicks": url.max_clicks,
             "click_count": url.click_count,
@@ -35,4 +44,31 @@ def gen_short_url(
     )
 
     return response
+    
+
+@router.get("/{short_code}")
+def redirect_url(short_code: str, db: Session = Depends(get_db)) : 
+    long_url = redirect_service(db, short_code)
+    return RedirectResponse(
+        url=long_url,
+        status_code=302,
+    )
+    
+    
+@router.get("", response_model=UrlListResponse)
+def get_urls(
+    is_active: bool | None = None,
+    alias: str | None = None,
+    page: int = Query(default=1, ge=1),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    return get_urls_service(
+        db=db,
+        user_id=current_user.id,
+        is_active=is_active,
+        alias=alias,
+        page=page,
+    )
+    
     
