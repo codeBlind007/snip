@@ -1,16 +1,16 @@
-from math import ceil
+import redis
+import secrets
+import string
+import os
 
 from fastapi import HTTPException
-from sqlalchemy import func, or_, update
-
+from sqlalchemy import case, func, or_, update
+from math import ceil
 from app.models.url import Url
 from app.schemas.url import UrlCreateRequest, UrlListResponse, UrlResponse, UrlUpdateRequest
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
-
-import secrets
-import string
-import os
+from app.services.cache_service import get_cached_url, cache_url, invalidate_cached_url
 
 is_development = os.getenv("env") == 'development'
 prefix_url = "http://127.0.0.1:8000/url" if is_development else os.getenv("prefix_url")
@@ -108,8 +108,33 @@ def short_url_service(
         ) from exc
         
         
+
 def redirect_service(db: Session, short_code: str) -> str:
+
+    # 1. Redis cache lookup
     try:
+        cached_url = get_cached_url(short_code)
+
+        if cached_url is not None:
+            return cached_url["long_url"]
+
+    except redis.RedisError:
+        pass
+
+    try:
+        # 2. Build update values dynamically
+        update_values = {}
+
+        # Increment only for click-limited URLs
+        # (max_clicks IS NOT NULL)
+        update_values["click_count"] = case(
+            (
+                Url.max_clicks.is_not(None),
+                Url.click_count + 1,
+            ),
+            else_=Url.click_count,
+        )
+
         stmt = (
             update(Url)
             .where(
@@ -124,22 +149,28 @@ def redirect_service(db: Session, short_code: str) -> str:
                     Url.click_count < Url.max_clicks,
                 ),
             )
-            .values(
-                click_count=Url.click_count + 1
+            .values(**update_values)
+            .returning(
+                Url.id,
+                Url.short_code,
+                Url.long_url,
+                Url.max_clicks,
+                Url.is_active,
+                Url.expire_time,
+                Url.created_at,
+                Url.user_id,
             )
-            .returning(Url.long_url)
         )
 
-        long_url = db.execute(stmt).scalar_one_or_none()
+        result = db.execute(stmt).mappings().one_or_none()
 
-        if long_url is None:
+        # 3. Handle invalid URLs
+        if result is None:
             db.rollback()
 
-            url = (
-                db.query(Url)
-                .filter(Url.short_code == short_code)
-                .first()
-            )
+            url = db.query(Url).filter(
+                Url.short_code == short_code
+            ).first()
 
             if url is None:
                 raise HTTPException(
@@ -152,17 +183,26 @@ def redirect_service(db: Session, short_code: str) -> str:
                 detail="This short URL has expired or is no longer available",
             )
 
+        # 4. Commit
         db.commit()
 
-        return long_url
+        # 5. Cache only unlimited-click URLs
+        if result["max_clicks"] is None:
+            try:
+                cache_url(result)
+
+            except redis.RedisError:
+                pass
+
+        return result["long_url"]
 
     except SQLAlchemyError:
         db.rollback()
+
         raise HTTPException(
             status_code=500,
             detail="Database error while processing redirect",
         )
-        
 
 def get_urls_service(
     db: Session,
@@ -271,6 +311,11 @@ def update_url_config_service(
             detail="Failed to update URL configuration",
         )
 
+    try:
+        invalidate_cached_url(url.short_code)
+    except redis.RedisError: 
+        pass
+    
     return UrlResponse(
         id=url.id,
         short_url=f"https://snip.ly/{url.short_code}",

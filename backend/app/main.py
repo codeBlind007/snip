@@ -3,10 +3,17 @@ from contextlib import asynccontextmanager
 from app.db.db import engine, check_database_connection
 from app.api.routes.auth import router as auth_router
 from app.api.routes.url import router as url_router
+from app.db.redis import redis_client
+import redis
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     check_database_connection()
+    try:
+        redis_client.ping()
+        print("Redis connected successfully!")
+    except redis.RedisError as e:
+        print(f"Redis connection failed: {e}")
     yield
     engine.dispose()
 
