@@ -1,3 +1,4 @@
+import os
 from fastapi import APIRouter, Depends, HTTPException, status, Response
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -7,6 +8,8 @@ from app.schemas.auth import SignupRequest, SignupResponse, LoginRequest, LoginR
 from app.services.auth_service import signup_user, login_user, create_access_token
 
 COOKIE_NAME = "access_token"
+is_development = os.getenv("env") == "development"
+is_secure = not is_development
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
@@ -28,7 +31,7 @@ def signup(data: SignupRequest, response: Response, db: Session = Depends(get_db
         key=COOKIE_NAME,
         value=token,
         httponly=True,
-        secure=True,
+        secure=is_secure,
         samesite="lax",
         max_age=30 * 60,
         path="/",
@@ -40,7 +43,6 @@ def signup(data: SignupRequest, response: Response, db: Session = Depends(get_db
 
 @router.post("/login", response_model=LoginResponse, status_code=status.HTTP_200_OK)
 def login(data: LoginRequest, response: Response, db: Session = Depends(get_db)):
-    
     user = login_user(db, data)
     token = create_access_token(user.id)
     
@@ -48,11 +50,10 @@ def login(data: LoginRequest, response: Response, db: Session = Depends(get_db))
         key=COOKIE_NAME,
         value=token,
         httponly=True,
-        secure=True,
+        secure=is_secure,
         samesite="lax",
         max_age=30 * 60,
         path="/",
     )
     
     return {"user": user}
-    

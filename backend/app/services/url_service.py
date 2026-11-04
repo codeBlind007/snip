@@ -318,7 +318,7 @@ def update_url_config_service(
     
     return UrlResponse(
         id=url.id,
-        short_url=f"https://snip.ly/{url.short_code}",
+        short_url=f"{prefix_url}/{url.short_code}",
         long_url=url.long_url,
         max_clicks=url.max_clicks,
         click_count=url.click_count,
