@@ -1,3 +1,4 @@
+import os
 import json
 from datetime import datetime, timezone
 from app.db.redis import redis_client
@@ -7,11 +8,18 @@ CACHE_PREFIX = "url:"
 CACHE_TTL = 3600
 
 
+def is_redis_enabled() -> bool:
+    return os.getenv("ENABLE_REDIS_CACHE", "false").lower() in ("true", "1", "yes")
+
+
 def get_cached_url(short_code: str) -> Url: 
     """
     Returns cached URL metadata if available.
-    Returns None on cache miss.
+    Returns None on cache miss or when Redis caching is bypassed.
     """
+    if not is_redis_enabled():
+        return None
+
     key = f"{CACHE_PREFIX}{short_code}"
 
     cached_data = redis_client.get(key)
@@ -19,16 +27,15 @@ def get_cached_url(short_code: str) -> Url:
     if cached_data is None:
         return None
 
-    print(cached_data)
-    
     return json.loads(cached_data)
-
 
 
 def cache_url(url: Url):
     """
-    Cache only unlimited-click URLs.
+    Cache only unlimited-click URLs when Redis caching is enabled.
     """
+    if not is_redis_enabled():
+        return
 
     if url.max_clicks is not None or not url.is_active:
         return
@@ -78,5 +85,10 @@ def cache_url(url: Url):
     
 
 def invalidate_cached_url(short_code: str):
+    if not is_redis_enabled():
+        return
     key = f"{CACHE_PREFIX}{short_code}"
-    redis_client.delete(key)
+    try:
+        redis_client.delete(key)
+    except Exception:
+        pass

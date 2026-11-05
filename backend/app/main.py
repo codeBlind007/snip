@@ -54,4 +54,8 @@ def root():
 
 @app.get("/health-status")
 def health_status():
-    return {"server-health": "ok"}
+    return {
+        "server-health": "ok",
+        "pool_size": engine.pool.size(),
+        "max_overflow": engine.pool._max_overflow,
+    }
